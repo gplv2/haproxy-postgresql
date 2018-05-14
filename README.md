@@ -8,4 +8,20 @@ you need to setup a trust connection between haproxy and postgresql.  In this ex
 
 This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy architected setup, but without a witness server.
 
+### Screenshot
+![alt text][haproxy1]
+
+
+## Prepare
+
+ - setup a cluster first (atleast the master)
+ - use repmgr to create a managed cluster
+ - use pgbouncer in front of the DB in production setups, point haproxy to the bouncer but check directly on the pg servers
+
+## suggestions
+ - welcome here
+
+##
+
+[haproxy1]: https://github.com/gplv2/haproxy-postgresql/raw/master/screenshots/hastats.png "Stats example of normal DB situation"
 
