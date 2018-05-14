@@ -1,0 +1,153 @@
+# haproxy postgresql master check
+#
+# haproxy listen on: <LISTENPORT> #5432
+
+# Setup architecture : haproxy (2) <-> pgbouncer(2) <-> postgresql (1 + 1)
+
+# DB, ex remote instance #1 listen: 5432 ( master node )
+# DB, ex remote instance #2 listen: 5432 ( standby node )
+
+# passwordless auth for check user pgc
+# The check is performed directly, without consulting the pgbouncer, hence checking
+# happens on port 6432 , bouncers listen on 5432
+
+# external failover, promoting replica to master in case of failure: using repmgr
+# template1 database is accessible by user pgc
+#
+# haproxy will pass connection to postgresql master node:
+# $ psql -h -p 5432 -U pgc template1
+
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+        log         127.0.0.1 local2
+
+        chroot      /var/lib/haproxy
+        pidfile     /var/run/haproxy.pid
+        maxconn     4000
+        user        haproxy
+        group       haproxy
+        daemon
+        spread-checks 5
+
+        # turn on stats unix socket
+        stats socket /var/lib/haproxy/stats
+
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+        mode                    tcp
+        log                     global
+        option                  dontlognull
+        option                  redispatch
+        retries                 3
+        timeout queue           1m
+        timeout connect         1s
+        timeout client          3600s
+        timeout server          3600s
+        timeout check           2s
+        maxconn                 500
+#---------------------------------------------------------------------
+# statistics
+#---------------------------------------------------------------------
+# Host HA-Proxy's web stats on Port 8182.
+
+listen HAProxy-Statistics *:8182
+        mode http
+        option httplog
+        stats enable
+        stats uri /haproxy?stats
+        stats refresh 20s
+        stats realm PSQL Haproxy\ Statistics  # Title text for popup window
+        stats show-node
+        stats show-legends
+        stats show-desc PSQL load balancer stats (master)
+        stats auth pgadmin:pgsecret
+
+
+#---------------------------------------------------------------------
+# main frontend which proxys to the backends
+#---------------------------------------------------------------------
+
+frontend front_pg
+    mode tcp
+    bind *:<LISTENPORT> # 5432
+    default_backend backend_pg
+
+#---------------------------------------------------------------------
+# the postgresql cluster backend (master + standby)
+#---------------------------------------------------------------------
+
+backend backend_pg
+    option tcp-check
+    tcp-check connect
+
+# user: pgc
+# database: template1
+#
+    tcp-check send-binary 00000025                 # packet length: 37 bytes in (  4 bytes )
+    tcp-check send-binary 00030000                 # protocol version           (  4 bytes )
+    tcp-check send-binary 7573657200               # "user"                     (  5 bytes )
+    tcp-check send-binary 70676300                 # "pgc"                      (  4 bytes )
+    tcp-check send-binary 646174616261736500       # "database"                 (  9 bytes )
+    tcp-check send-binary 74656d706c6174653100     # "template1"                ( 10 bytes )
+    tcp-check send-binary 00                       # terminator                 (  1 byte  )
+                                                   ## TOTAL                     ( 37 bytes )
+
+# expect: Auth
+#
+    tcp-check expect binary 52                     # Auth request
+    tcp-check expect binary 00000008               # packet length : 8 bytes in (  4 bytes )
+    tcp-check expect binary 00000000               # auth response ok           (  4 bytes )
+                                                   ## TOTAL                     (  8 bytes )
+
+# write: run simple query
+# "select pg_is_in_recovery();"
+#
+    tcp-check send-binary 51                       # simple query
+    tcp-check send-binary 00000020                 # packet length: 32 bytes in (  4 bytes )
+    tcp-check send-binary 73656c65637420           # "select "                  (  7 bytes )
+    tcp-check send-binary 70675f69735f696e5f7265636f7665727928293b
+                                                   # "pg_is_in_recovery();      ( 20 bytes )
+    tcp-check send-binary 00 # terminator                                       (  1 byte  )
+                                                   ## TOTAL                     ( 32 bytes )
+
+# expect: Row description packet
+#
+tcp-check expect binary 54                         # row description packet
+    tcp-check expect binary 0000002a               # packet length: 42 bytes (0x2a) (  4 bytes )
+    tcp-check expect binary 0001                   # field count: 1                 (  1 byte  )
+    tcp-check expect binary 70675f69735f696e5f7265636f7665727900
+                                                   # field name: pg_is_in_recovery  ( 19 bytes )
+    tcp-check expect binary 00000000               # table oid: 0                   (  4 bytes )
+    tcp-check expect binary 0000                   # column index: 0                (  2 bytes )
+    tcp-check expect binary 00000010               # type oid: 16                   (  4 bytes )
+    tcp-check expect binary 0001                   # column length: 1               (  2 bytes )
+    tcp-check expect binary ffffffff               # type modifier: -1              (  4 bytes )
+    tcp-check expect binary 0000                   # format: text                   (  2 bytes )
+                                                   ## TOTAL                         ( 42 bytes )
+
+# expect: query result data
+#
+# "f" means node in master mode
+# "t" means node in standby mode (read-only)
+#
+    tcp-check expect binary 44                     # data row packet
+    tcp-check expect binary 0000000b               # packet length: 11 (0x0b)   (  4 bytes )
+    tcp-check expect binary 0001                   # field count: 1             (  2 bytes )
+    tcp-check expect binary 00000001               # column length in bytes: 1  (  4 bytes )
+    tcp-check expect binary 66                     # column data, "f"           (  1 byte  )
+                                                   ## TOTAL                     ( 11 bytes )
+# write: terminate session
+    tcp-check send-binary 58                       # Termination packet
+    tcp-check send-binary 00000004                 # packet length: 4 (no body)
+
+# server list to check
+    server pgnode1 <SERVER1>:<PORT1> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <CHECKPORT1>          # this defaults to the initial master
+    server pgnode2 <SERVER2>:<PORT2> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <CHECKPORT2> backup   # this defaults to the initial standby
+
+# These 2 above can change role depending on their role
+
