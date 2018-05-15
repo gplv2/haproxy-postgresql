@@ -36,7 +36,12 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
  - edit config.py, set vars
 
  - run it :
-    ./create_haproxy_check.py mytest 
+    ./create_haproxy_check.py standby mystandby 
+
+ - alternatively, you can also test the redirect config :
+    ./create_haproxy_check.py redirect myredirect 
+
+There are 2 templates now, standby will make haproxy mark slaves as bad candidates.  the redirect template will allow you to filter out a rogue client to redirect it towards the correct master server while letting legitimate connections (monitoring, admin etc) pass based on ip address ACL's
 
 ## the results
 
