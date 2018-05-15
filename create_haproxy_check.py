@@ -18,12 +18,14 @@ def help_exit(exit_status):
         print("Error: Wrong arguments in call")
     help_msg = """Usage:
 
-    %s <project>
+    %s <templatename> <project>
 
     Options:
-        project     project name
+        templatename    name of a template in the template dir
+        project         project name
     """ % sys.argv[0]
     print(help_msg)
+    os.system('ls -altr template/*')
     sys.exit(exit_status)
 
 def replace(source_name, props, output_name):
@@ -41,7 +43,12 @@ def new_haproxy_conf(props):
     project = props["<%= @bn.project %>"]
     new_conf = "%s/%s/haproxy-%s.cnf" % (BASEDIR, project, project)
     print("Creating %s" % new_conf)
-    replace("template/haproxy.template", props, new_conf)
+
+    if os.path.isfile("template/%s.template" % sys.argv[1]):
+        replace("template/%s.template" % sys.argv[1], props, new_conf)
+    else:
+        print("Template does not exist : template/%s.template" % sys.argv[1])
+        sys.exit(0)
 
 def add_hba_checkuser(props):
     print('')
@@ -69,12 +76,12 @@ def add_hba_repmgr(props):
 
 def main():
     args = len(sys.argv)
-    if args is 3:
+    if args is 2:
         if sys.argv[1] == "help":
             help_exit(0)
         else:
             help_exit(1)
-    if args is not 2:
+    if args is not 3:
         help_exit(1)
 
     mastername = config.HA_MASTER_NAME
@@ -92,14 +99,14 @@ def main():
     #print("D %s" % d)
     #print("H %s" % hex(d).split('x')[-1])
 
-    
-
     # the props
     props = {
-        "<%= @bn.project %>": sys.argv[1],
+        "<%= @bn.template %>": sys.argv[1],
+        "<%= @bn.project %>": sys.argv[2],
         "<%= @bn.mastername %>": mastername,
         "<%= @bn.standbyname %>": standbyname,
         "<%= @bn.masterdsn %>": masterdsn,
+        "<%= @bn.masterip %>": masterdsn.split(':')[0],
         "<%= @bn.standbydsn %>": standbydsn,
         "<%= @bn.checkport %>": checkport,
         "<%= @bn.stats_user %>": statsuser,

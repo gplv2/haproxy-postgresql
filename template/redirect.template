@@ -76,6 +76,11 @@ listen HAProxy-Statistics *:8182
 frontend front_pg
     mode tcp
     bind *:<%= @bn.listenport %> # 5432
+    acl client_redirect src <%= @bn.masterip %>
+
+    if client_redirect use good_backend_pg
+
+# server list to check
     default_backend backend_pg
 
 #---------------------------------------------------------------------
@@ -83,6 +88,11 @@ frontend front_pg
 #---------------------------------------------------------------------
 
 backend backend_pg
+    option pgsql-check user <%= @bn.checkuser %>
+
+    server <%= @bn.standbyname %> <%= @bn.standbydsn %> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <%= @bn.checkport %> backup # this defaults to the initial standby
+
+backend good_backend_pg
     option tcp-check
     tcp-check connect
 
@@ -146,9 +156,11 @@ tcp-check expect binary 54                         # row description packet
     tcp-check send-binary 58                       # Termination packet
     tcp-check send-binary 00000004                 # packet length: 4 (no body)
 
+    acl client_redirected src <%= @bn.masterip %>
+    if client_redirected use new_backend
+
 # server list to check
     server <%= @bn.mastername %> <%= @bn.masterdsn %> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <%= @bn.checkport %>          # this defaults to the initial master
-    server <%= @bn.standbyname %> <%= @bn.standbydsn %> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <%= @bn.checkport %> backup # this defaults to the initial standby
 
 # These 2 above can change role depending on their role
 
