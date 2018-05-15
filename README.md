@@ -18,6 +18,9 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
  - use repmgr to create a managed cluster
  - use pgbouncer in front of the DB in production setups, point haproxy to the bouncer but check directly on the pg servers
 
+## generate a config
+ - edit config.py
+
 ## suggestions
  - welcome here
 

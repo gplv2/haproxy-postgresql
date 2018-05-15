@@ -77,16 +77,16 @@ def main():
     if args is not 2:
         help_exit(1)
 
-    mastername = config.BN_MASTER_NAME
-    masterdsn = config.BN_MASTER_DSN
-    standbyname = config.BN_STANDBY_NAME
-    standbydsn = config.BN_STANDBY_DSN
-    checkport = config.BN_CHECK_PORT
-    checkuser = config.BN_CHECK_USER
-    listenport = config.BN_LISTEN_PORT
-    statsuser = config.BN_STATS_USER
-    statspassword = config.BN_STATS_PASSWORD
-    vipip = config.BN_VIP_IP
+    mastername = config.HA_MASTER_NAME
+    masterdsn = config.HA_MASTER_DSN
+    standbyname = config.HA_STANDBY_NAME
+    standbydsn = config.HA_STANDBY_DSN
+    checkport = config.HA_CHECK_PORT
+    checkuser = config.HA_CHECK_USER
+    listenport = config.HA_LISTEN_PORT
+    statsuser = config.HA_STATS_USER
+    statspassword = config.HA_STATS_PASSWORD
+    vipip = config.HA_VIP_IP
 
     d = utf8len(checkuser) + 33 + 1;
     #print("D %s" % d)
