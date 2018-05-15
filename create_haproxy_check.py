@@ -105,6 +105,7 @@ def main():
         "<%= @bn.stats_user %>": statsuser,
         "<%= @bn.stats_password %>": statspassword,
         "<%= @bn.checkuser %>": checkuser,
+        "<%= @bn.listenport %>": listenport,
         "<%= @bn.checkuserlen %>": str(utf8len(checkuser)+1),
         "<%= @bn.totalsize %>": str(d),
         "<%= @bn.vipip %>": vipip,
