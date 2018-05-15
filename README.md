@@ -19,7 +19,51 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
  - use pgbouncer in front of the DB in production setups, point haproxy to the bouncer but check directly on the pg servers
 
 ## generate a config
- - edit config.py
+ - edit config.py, set vars
+
+    HA_MASTER_NAME = "node1"
+    HA_MASTER_DSN = "192.168.1.144:5432"
+    HA_STANDBY_NAME = "node2"
+    HA_STANDBY_DSN = "192.168.1.145:5432"
+    HA_VIP_IP = "192.168.1.141"
+    HA_CHECK_USER = "pgcheck"
+    HA_CHECK_PORT = "6432"
+    HA_LISTEN_PORT = "5432"
+    HA_STATS_USER = "hapsql"
+    HA_STATS_PASSWORD = "snowball1"
+
+ - run it :
+    ./create_haproxy_check.py mytest 
+
+## the results
+
+    Creating haproxy project mytest
+    Creating configs/mytest/haproxy-mytest.cnf
+
+## check the pg_hba suggestions and implement these for passwordless checks
+
+### pg_hba user check additions (for balancer access to db)
+
+    Add the following lines to pg_hba.conf:
+    # special loadbalancer account in trust
+    host    template1             pgcheck             192.168.1.141/32        trust
+    host    template1             pgcheck             192.168.1.144/32        trust
+    host    template1             pgcheck             192.168.1.145/32        trust
+
+
+### pg_hba repmgr additions
+
+    Add the following lines to pg_hba.conf:
+    # repmgr account
+    local   replication   repmgr                            trust
+    host    replication   repmgr      127.0.0.1/32          trust
+    host    replication   repmgr      192.168.1.144/32     trust
+    host    replication   repmgr      192.168.1.145/32     trust
+    local   repmgr        repmgr                            trust
+    host    repmgr        repmgr      127.0.0.1/32          trust
+    host    repmgr        repmgr      192.168.1.144/32     trust
+    host    repmgr        repmgr      192.168.1.145/32     trust
+
 
 ## suggestions
  - welcome here
