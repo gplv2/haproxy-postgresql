@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import config
-import os
+import os, errno
 import stat
 import string
 import sys
@@ -121,13 +121,24 @@ def main():
     }
 
     project = props["<%= @bn.project %>"]
-    os.mkdir('%s/%s' % (BASEDIR, project))
-    print("Creating haproxy project %s" % (project))
+    directory = ('%s/%s' % (BASEDIR, project))
+
+    if not os.path.isfile("template/%s.template" % sys.argv[1]):
+        print("Template does not exist : %s" % sys.argv[1])
+        sys.exit(0)
+
+    try:
+        print("Creating haproxy project %s" % (project))
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     new_haproxy_conf(props)
     add_hba_checkuser(props)
     add_hba_repmgr(props)
 
-print("Done!")
+    print("Done!")
 
 if __name__ == '__main__':
     main()
