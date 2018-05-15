@@ -7,15 +7,15 @@
 # DB, ex remote instance #1 listen: 5432 ( master node )
 # DB, ex remote instance #2 listen: 5432 ( standby node )
 
-# passwordless auth for check user pgc
+# passwordless auth for check user <%= @bn.checkuser %>
 # The check is performed directly, without consulting the pgbouncer, hence checking
 # happens on port 6432 , bouncers listen on 5432
 
 # external failover, promoting replica to master in case of failure: using repmgr
-# template1 database is accessible by user pgc
+# template1 database is accessible by user <%= @bn.checkuser %>
 #
 # haproxy will pass connection to postgresql master node:
-# $ psql -h -p 5432 -U pgc template1
+# $ psql -h -p 5432 -U <%= @bn.checkuser %> template1
 
 #---------------------------------------------------------------------
 # Global settings
@@ -64,8 +64,9 @@ listen HAProxy-Statistics *:8182
         stats realm PSQL Haproxy\ Statistics  # Title text for popup window
         stats show-node
         stats show-legends
-        stats show-desc PSQL load balancer stats (master)
+        stats show-desc PSQL load balancer stats
         stats auth pgadmin:pgsecret
+        #stats auth <%= @bn.stats_user %>:<%= @bn.stats_password %>
 
 
 #---------------------------------------------------------------------
@@ -74,7 +75,7 @@ listen HAProxy-Statistics *:8182
 
 frontend front_pg
     mode tcp
-    bind *:<LISTENPORT> # 5432
+    bind *:<%= @bn.listenport %> # 5432
     default_backend backend_pg
 
 #---------------------------------------------------------------------
@@ -85,13 +86,13 @@ backend backend_pg
     option tcp-check
     tcp-check connect
 
-# user: pgc
+# user: <%= @bn.checkuser %>
 # database: template1
 #
     tcp-check send-binary 00000025                 # packet length: 37 bytes in (  4 bytes )
     tcp-check send-binary 00030000                 # protocol version           (  4 bytes )
     tcp-check send-binary 7573657200               # "user"                     (  5 bytes )
-    tcp-check send-binary 70676300                 # "pgc"                      (  4 bytes )
+    tcp-check send-binary 70676300                 # "<%= @bn.checkuser %>"                      (  4 bytes )
     tcp-check send-binary 646174616261736500       # "database"                 (  9 bytes )
     tcp-check send-binary 74656d706c6174653100     # "template1"                ( 10 bytes )
     tcp-check send-binary 00                       # terminator                 (  1 byte  )
@@ -146,8 +147,8 @@ tcp-check expect binary 54                         # row description packet
     tcp-check send-binary 00000004                 # packet length: 4 (no body)
 
 # server list to check
-    server pgnode1 <SERVER1>:<PORT1> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <CHECKPORT1>          # this defaults to the initial master
-    server pgnode2 <SERVER2>:<PORT2> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <CHECKPORT2> backup   # this defaults to the initial standby
+    server <%= @bn.mastername %> <%= @bn.masterdsn %> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <%= @bn.checkport %>          # this defaults to the initial master
+    server <%= @bn.standbyname %> <%= @bn.standbydsn %> check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port <%= @bn.checkport %> backup # this defaults to the initial standby
 
 # These 2 above can change role depending on their role
 
