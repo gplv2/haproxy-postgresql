@@ -1,10 +1,10 @@
 # haproxy-postgresql
 
-Use this to determine who's the master server in a postgresql cluster setup
+Use this to determine who's the master server in a postgresql cluster setup.  this sends a `select pg_is_in_recovery()` command to the psql servers to see if it is in standby more or not.  haproxy will only mark masters as up.  The standby node is in backup mode, so haproxy will not try to write to it unless the master node is down AND the standby node is promoted to a master
 
-The standby node is in backup mode, so haproxy will not try to write to it unless the master node is down AND the standby node is promoted to a master
+You need to setup a trust connection between haproxy and postgresql.  In this example there are 2 pgbouncers in between haproxy and postgresql.  This means you need to install the postgresql nodes at a different port (here 6432).  Trust connection suggestions will be shown when you run the script.
 
-you need to setup a trust connection between haproxy and postgresql.  In this example there are 2 pgbouncers in between haproxy and postgresql.  This means you need to install the postgresql nodes at a different port (here 6432)
+calculates byte length so the tcp package is well constructed, when changing length of username, you need to adjust.  
 
 This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy architected setup, but without a witness server.
 
@@ -58,18 +58,18 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
 
     Add the following lines to pg_hba.conf:
     # repmgr account
-    local   replication   repmgr                            trust
-    host    replication   repmgr      127.0.0.1/32          trust
+    local   replication   repmgr                           trust
+    host    replication   repmgr      127.0.0.1/32         trust
     host    replication   repmgr      192.168.1.144/32     trust
     host    replication   repmgr      192.168.1.145/32     trust
-    local   repmgr        repmgr                            trust
-    host    repmgr        repmgr      127.0.0.1/32          trust
+    local   repmgr        repmgr                           trust
+    host    repmgr        repmgr      127.0.0.1/32         trust
     host    repmgr        repmgr      192.168.1.144/32     trust
     host    repmgr        repmgr      192.168.1.145/32     trust
 
 
 ## suggestions
- - welcome here
+ - pull requests/ comments welcome here on github
 
 ##
 
