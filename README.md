@@ -20,9 +20,7 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
 
 ## generate a config
 
- - edit config.py, set vars
-
-
+```
     HA_MASTER_NAME = "node1"
     HA_MASTER_DSN = "192.168.1.144:5432"
     HA_STANDBY_NAME = "node2"
@@ -33,7 +31,9 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
     HA_LISTEN_PORT = "5432"
     HA_STATS_USER = "hapsql"
     HA_STATS_PASSWORD = "snowball1"
+```
 
+ - edit config.py, set vars
 
  - run it :
     ./create_haproxy_check.py mytest 
