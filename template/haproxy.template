@@ -1,6 +1,6 @@
 # haproxy postgresql master check
 #
-# haproxy listen on: <LISTENPORT> #5432
+# haproxy listen on: <%= @bn.listenport %> # 5432
 
 # Setup architecture : haproxy (2) <-> pgbouncer(2) <-> postgresql (1 + 1)
 
@@ -89,14 +89,14 @@ backend backend_pg
 # user: <%= @bn.checkuser %>
 # database: template1
 #
-    tcp-check send-binary 00000025                 # packet length: 37 bytes in (  4 bytes )
+    tcp-check send-binary 000000<%= @bn.totalbytes %> # packet length: <%= @bn.totalsize %> bytes in                    (  4 bytes )
     tcp-check send-binary 00030000                 # protocol version           (  4 bytes )
     tcp-check send-binary 7573657200               # "user"                     (  5 bytes )
-    tcp-check send-binary 70676300                 # "<%= @bn.checkuser %>"                      (  4 bytes )
+    tcp-check send-binary 70676300                 # "<%= @bn.checkuser %>"                 (  <%= @bn.checkuserlen %> bytes )
     tcp-check send-binary 646174616261736500       # "database"                 (  9 bytes )
     tcp-check send-binary 74656d706c6174653100     # "template1"                ( 10 bytes )
     tcp-check send-binary 00                       # terminator                 (  1 byte  )
-                                                   ## TOTAL                     ( 37 bytes )
+                                                   ## TOTAL                     ( <%= @bn.totalsize %> bytes )
 
 # expect: Auth
 #

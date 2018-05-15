@@ -8,22 +8,20 @@ import sys
 
 BASEDIR = "configs"
 
-# APPLICATION_PATH = "/srv/bosanova/9.5"
 APPLICATION_PATH = "."
+
+def utf8len(s):
+    return len(s.encode('utf-8'))
 
 def help_exit(exit_status):
     if exit_status is not 0:
         print("Error: Wrong arguments in call")
     help_msg = """Usage:
 
-    %s <project> <master>:<port> <standby>:<port>
+    %s <project>
 
     Options:
         project     project name
-        masterdsn   host:port where postgresql will be running for initial master
-        standbydsn  host:port where postgresql will be running for initial standby
-        username    username for tcp-check
-        checkport   port to use for check ( eg: 6432 )
     """ % sys.argv[0]
     print(help_msg)
     sys.exit(exit_status)
@@ -45,14 +43,38 @@ def new_haproxy_conf(props):
     print("Creating %s" % new_conf)
     replace("template/haproxy.template", props, new_conf)
 
+def add_hba_checkuser(props):
+    print('')
+    print("Add the following lines to pg_hba.conf:")
+    print("# special loadbalancer account in trust")
+    print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.vipip %>"]))
+    print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.masterdsn %>"].split(':')[0]))
+    print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.standbydsn %>"].split(':')[0]))
+    print('')
+
+def add_hba_repmgr(props):
+    print('')
+    print("Add the following lines to pg_hba.conf:")
+    print("# repmgr account")
+    print("local   replication   repmgr                            trust")
+    print("host    replication   repmgr      127.0.0.1/32          trust")
+    print("host    replication   repmgr      %s/32     trust" % props["<%= @bn.masterdsn %>"].split(':')[0])
+    print("host    replication   repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
+    
+    print("local   repmgr        repmgr                            trust")
+    print("host    repmgr        repmgr      127.0.0.1/32          trust")
+    print("host    repmgr        repmgr      %s/32     trust" % props["<%= @bn.masterdsn %>"].split(':')[0])
+    print("host    repmgr        repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
+    print('')
+
 def main():
     args = len(sys.argv)
-    if args is 2:
+    if args is 3:
         if sys.argv[1] == "help":
             help_exit(0)
         else:
             help_exit(1)
-    if args is not 3:
+    if args is not 2:
         help_exit(1)
 
     mastername = config.BN_MASTER_NAME
@@ -64,11 +86,17 @@ def main():
     listenport = config.BN_LISTEN_PORT
     statsuser = config.BN_STATS_USER
     statspassword = config.BN_STATS_PASSWORD
+    vipip = config.BN_VIP_IP
+
+    d = utf8len(checkuser) + 33 + 1;
+    #print("D %s" % d)
+    #print("H %s" % hex(d).split('x')[-1])
+
+    
 
     # the props
     props = {
         "<%= @bn.project %>": sys.argv[1],
-        "<%= @bn.port %>": sys.argv[2],
         "<%= @bn.mastername %>": mastername,
         "<%= @bn.standbyname %>": standbyname,
         "<%= @bn.masterdsn %>": masterdsn,
@@ -77,6 +105,10 @@ def main():
         "<%= @bn.stats_user %>": statsuser,
         "<%= @bn.stats_password %>": statspassword,
         "<%= @bn.checkuser %>": checkuser,
+        "<%= @bn.checkuserlen %>": str(utf8len(checkuser)+1),
+        "<%= @bn.totalsize %>": str(d),
+        "<%= @bn.vipip %>": vipip,
+        "<%= @bn.totalbytes %>": str(hex(d).split('x')[-1]),
         "<%= @bn.path %>": APPLICATION_PATH
     }
 
@@ -84,6 +116,8 @@ def main():
     os.mkdir('%s/%s' % (BASEDIR, project))
     print("Creating haproxy project %s" % (project))
     new_haproxy_conf(props)
+    add_hba_checkuser(props)
+    add_hba_repmgr(props)
 
 print("Done!")
 
