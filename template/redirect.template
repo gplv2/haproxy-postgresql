@@ -55,7 +55,8 @@ defaults
 #---------------------------------------------------------------------
 # Host HA-Proxy's web stats on Port 8182.
 
-listen HAProxy-Statistics *:8182
+listen HAProxy-Statistics 
+        bind *:8182
         mode http
         option httplog
         stats enable
@@ -67,7 +68,6 @@ listen HAProxy-Statistics *:8182
         stats show-desc PSQL load balancer stats
         stats auth pgadmin:pgsecret
         #stats auth <%= @bn.stats_user %>:<%= @bn.stats_password %>
-
 
 #---------------------------------------------------------------------
 # main frontend which proxys to the backends
