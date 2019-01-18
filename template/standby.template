@@ -120,6 +120,10 @@ backend backend_pg
     tcp-check send-binary 00 # terminator                                       (  1 byte  )
                                                    ## TOTAL                     ( 32 bytes )
 
+    # write: terminate session (this fixes #issue1)
+    tcp-check send-binary 58                       # Termination packet
+    tcp-check send-binary 00000004                 # packet length: 4 (no body)
+
 # expect: Row description packet
 #
 tcp-check expect binary 54                         # row description packet
