@@ -150,9 +150,6 @@ tcp-check expect binary 54                         # row description packet
     tcp-check expect binary 00000001               # column length in bytes: 1  (  4 bytes )
     tcp-check expect binary 66                     # column data, "f"           (  1 byte  )
                                                    ## TOTAL                     ( 11 bytes )
-# write: terminate session
-    tcp-check send-binary 58                       # Termination packet
-    tcp-check send-binary 00000004                 # packet length: 4 (no body)
 
 # close open sessions in case the downed server is still running but is out of sync with the master
     default-server on-marked-down shutdown-sessions
