@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import config
 import os, errno
@@ -14,7 +14,7 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 def help_exit(exit_status):
-    if exit_status is not 0:
+    if exit_status != 0:
         print("Error: Wrong arguments in call")
     help_msg = """Usage:
 
@@ -76,12 +76,12 @@ def add_hba_repmgr(props):
 
 def main():
     args = len(sys.argv)
-    if args is 2:
+    if args == 2:
         if sys.argv[1] == "help":
             help_exit(0)
         else:
             help_exit(1)
-    if args is not 3:
+    if args != 3:
         help_exit(1)
 
     mastername = config.HA_MASTER_NAME
