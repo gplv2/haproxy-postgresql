@@ -15,7 +15,7 @@ def utf8len(s):
 
 def help_exit(exit_status):
     if exit_status != 0:
-        print("Error: Wrong arguments in call")
+        print("Error: Wrong arguments in call", file=sys.stderr)
     help_msg = """Usage:
 
     %s <templatename> <project>
@@ -24,7 +24,7 @@ def help_exit(exit_status):
         templatename    name of a template in the template dir
         project         project name
     """ % sys.argv[0]
-    print(help_msg)
+    print(help_msg, file=sys.stderr)
     os.system('ls -altr template/*')
     sys.exit(exit_status)
 
@@ -42,17 +42,17 @@ def replace(source_name, props, output_name):
 def new_haproxy_conf(props):
     project = props["<%= @bn.project %>"]
     new_conf = "%s/%s/haproxy-%s.cnf" % (BASEDIR, project, project)
-    print("Creating %s" % new_conf)
+    print("Creating %s" % new_conf, file=sys.stderr)
 
     if os.path.isfile("template/%s.template" % sys.argv[1]):
         replace("template/%s.template" % sys.argv[1], props, new_conf)
     else:
-        print("Template does not exist : template/%s.template" % sys.argv[1])
+        print("Template does not exist : template/%s.template" % sys.argv[1], file=sys.stderr)
         sys.exit(0)
 
 def add_hba_checkuser(props):
     print('')
-    print("Add the following lines to pg_hba.conf:")
+    #print("Add the following lines to pg_hba.conf:", file=sys.stderr)
     print("# special loadbalancer account in trust")
     print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.vipip %>"]))
     print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.masterdsn %>"].split(':')[0]))
@@ -61,7 +61,7 @@ def add_hba_checkuser(props):
 
 def add_hba_repmgr(props):
     print('')
-    print("Add the following lines to pg_hba.conf:")
+    #print("Add the following lines to pg_hba.conf:", file=sys.stderr)
     print("# repmgr account")
     print("local   replication   repmgr                            trust")
     print("host    replication   repmgr      127.0.0.1/32          trust")
@@ -124,11 +124,11 @@ def main():
     directory = ('%s/%s' % (BASEDIR, project))
 
     if not os.path.isfile("template/%s.template" % sys.argv[1]):
-        print("Template does not exist : %s" % sys.argv[1])
+        print("Template does not exist : %s" % sys.argv[1], file=sys.stderr)
         sys.exit(0)
 
     try:
-        print("Creating haproxy project %s" % (project))
+        print("Creating haproxy project %s" % (project), file=sys.stderr)
         os.makedirs(directory)
     except OSError as e:
         if e.errno != errno.EEXIST:
@@ -138,7 +138,7 @@ def main():
     add_hba_checkuser(props)
     add_hba_repmgr(props)
 
-    print("Done!")
+    print("Done!", file=sys.stderr)
 
 if __name__ == '__main__':
     main()
