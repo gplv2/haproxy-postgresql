@@ -75,7 +75,7 @@ listen HAProxy-Statistics
 
 frontend front_pg
     mode tcp
-    bind *:<%= @bn.listenport %> # 5432
+    bind <%= @bn.vipip %>:<%= @bn.listenport %> # 5432
 
     acl pg_single_master nbsrv(backend_pg) eq 1
     tcp-request connection reject if !pg_single_master
