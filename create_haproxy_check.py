@@ -100,8 +100,8 @@ def main():
     #print("H %s" % hex(d).split('x')[-1])
    
     # clean up when receiving a cidr block from config (\ escaped or not)
-    if vpip.find('/'):
-        vpip=vpip.split('/')[0].strip('\\')
+    if vipip.find('/'):
+        vipip = vipip.split('/')[0].strip('\\')
 
     # the props
     props = {
@@ -112,6 +112,7 @@ def main():
         "<%= @bn.masterdsn %>": masterdsn,
         "<%= @bn.masterip %>": masterdsn.split(':')[0],
         "<%= @bn.standbydsn %>": standbydsn,
+        "<%= @bn.checkuserhex %>": checkuser.encode("utf-8").hex() + "00",
         "<%= @bn.checkport %>": checkport,
         "<%= @bn.stats_user %>": statsuser,
         "<%= @bn.stats_password %>": statspassword,
