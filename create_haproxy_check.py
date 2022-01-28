@@ -98,6 +98,10 @@ def main():
     d = utf8len(checkuser) + 33 + 1;
     #print("D %s" % d)
     #print("H %s" % hex(d).split('x')[-1])
+   
+    # clean up when receiving a cidr block from config (\ escaped or not)
+    if vpip.find('/'):
+        vpip=vpip.split('/')[0].strip('\\')
 
     # the props
     props = {
