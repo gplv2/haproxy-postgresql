@@ -192,6 +192,7 @@ def main():
     else:
         print("No multiple standy ips found.", file=sys.stderr)
 
+    slavelist = False
     if multiple_slaves == True:
         if len(dsns) != len(names):
             print("dsn and names do not have the same number of entries", file=sys.stderr)
