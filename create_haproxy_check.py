@@ -1,10 +1,9 @@
 #! /usr/bin/env python3
-
 import config
 import os, errno
-import stat
-import string
 import sys
+from io import StringIO
+#from pprint import pprint
 
 BASEDIR = "configs"
 
@@ -39,39 +38,85 @@ def replace(source_name, props, output_name):
     output.close()
     source.close()
 
-def new_haproxy_conf(props):
+def new_haproxy_conf(props, slavelist):
     project = props["<%= @bn.project %>"]
     new_conf = "%s/%s/haproxy-%s.cnf" % (BASEDIR, project, project)
     print("Creating %s" % new_conf, file=sys.stderr)
 
-    if os.path.isfile("template/%s.template" % sys.argv[1]):
-        replace("template/%s.template" % sys.argv[1], props, new_conf)
+    if(slavelist):
+        print("Config.py has multiple slave definitions, using -multi template instead : template/%s-multi.template" % sys.argv[1], file=sys.stderr)
+        if os.path.isfile("template/%s-multi.template" % sys.argv[1]):
+            print("Looking for partial template for slave entries: template/%s-partial.template" % sys.argv[1], file=sys.stderr)
+            if os.path.isfile("template/%s-partial.template" % sys.argv[1]):
+                #load partial template in variable (expect this to be a one liner)
+                with open("template/%s-partial.template" % sys.argv[1], 'r') as templatefile:
+                    slavetemplate = templatefile.read().rstrip()
+
+                slaves = StringIO()
+                #pprint(locals())
+                for name,dsn in slavelist.items():
+                    format_dictionary = {'name': name, 'dsn': dsn, 'checkport': props["<%= @bn.checkport %>"] }
+                    print("    " + slavetemplate.format(**format_dictionary), file=slaves)
+
+                props["<%= @SLAVELIST %>"] = slaves.getvalue()
+                replace("template/%s-multi.template" % sys.argv[1], props, new_conf)
+            else:
+                print("Partial template does not exist : template/%s-partial.template" % sys.argv[1], file=sys.stderr)
+                sys.exit(0)
+        else:
+            print("Template does not exist : template/%s-multi.template" % sys.argv[1], file=sys.stderr)
+            sys.exit(0)
     else:
-        print("Template does not exist : template/%s.template" % sys.argv[1], file=sys.stderr)
-        sys.exit(0)
+        if os.path.isfile("template/%s.template" % sys.argv[1]):
+            replace("template/%s.template" % sys.argv[1], props, new_conf)
+        else:
+            print("Template does not exist : template/%s.template" % sys.argv[1], file=sys.stderr)
+            sys.exit(0)
 
-def add_hba_checkuser(props):
+def add_hba_checkuser(props,extras):
     print('')
     #print("Add the following lines to pg_hba.conf:", file=sys.stderr)
-    print("# special loadbalancer account in trust")
+    print("### master/slaves are only a concept at start, any database node can later have a different role")
+    print("### this is just to give some clear pointers to the ones using this")
+    print("### special loadbalancer account in trust")
+    print("")
+    print("## vip / haproxy check user")
     print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.vipip %>"]))
+    print("# master")
     print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.masterdsn %>"].split(':')[0]))
-    print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.standbydsn %>"].split(':')[0]))
-    print('')
+    print("# slaves")
+    if(extras['checkuser'] == "#"):
+        print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], props["<%= @bn.standbydsn %>"].split(':')[0]))
 
-def add_hba_repmgr(props):
-    print('')
+    if(extras):
+        print(extras['checkuser'])
+
+def add_hba_repmgr(props,extras):
     #print("Add the following lines to pg_hba.conf:", file=sys.stderr)
-    print("# repmgr account")
+    print("### replication user")
     print("local   replication   repmgr                            trust")
     print("host    replication   repmgr      127.0.0.1/32          trust")
+    print("# master")
     print("host    replication   repmgr      %s/32     trust" % props["<%= @bn.masterdsn %>"].split(':')[0])
-    print("host    replication   repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
-    
+    print("# slaves")
+    if(extras['repmgr'] == "#"):
+        print("host    replication   repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
+
+    if(extras):
+        print(extras['repl'])
+    print('')
+
+    print("### repmgr user")
     print("local   repmgr        repmgr                            trust")
     print("host    repmgr        repmgr      127.0.0.1/32          trust")
+    print("# master")
     print("host    repmgr        repmgr      %s/32     trust" % props["<%= @bn.masterdsn %>"].split(':')[0])
-    print("host    repmgr        repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
+    print("# slaves")
+    if(extras['repl'] == "#"):
+        print("host    repmgr        repmgr      %s/32     trust" % props["<%= @bn.standbydsn %>"].split(':')[0])
+
+    if(extras):
+        print(extras['repmgr'])
     print('')
 
 def main():
@@ -96,9 +141,13 @@ def main():
     vipip = config.HA_VIP_IP
 
     d = utf8len(checkuser) + 33 + 1;
+
+    multiple_slaves = False
+    extras = { "repl": "#", "repmgr": "#" , "checkuser": "#" }
+
     #print("D %s" % d)
     #print("H %s" % hex(d).split('x')[-1])
-   
+
     # clean up when receiving a cidr block from config (\ escaped or not)
     if vipip.find('/'):
         vipip = vipip.split('/')[0].strip('\\')
@@ -125,6 +174,44 @@ def main():
         "<%= @bn.path %>": APPLICATION_PATH
     }
 
+    if standbyname.find(";")!=-1:
+        print("Found multiple slave names.", file=sys.stderr)
+        names = standbyname.split(";")
+        multiple_slaves = True
+        for name in names:
+            print(name)
+    else:
+        print("No multiple standy servers found.", file=sys.stderr)
+
+    if standbydsn.find(";")!=-1:
+        print("Found multiple slave dsn.", file=sys.stderr)
+        dsns = standbydsn.split(";")
+        multiple_slaves = True
+        for ip in dsns:
+            print(ip)
+    else:
+        print("No multiple standy ips found.", file=sys.stderr)
+
+    if multiple_slaves == True:
+        if len(dsns) != len(names):
+            print("dsn and names do not have the same number of entries", file=sys.stderr)
+            sys.exit(0)
+        slavelist = dict(zip(names,dsns))
+        hba_repl = StringIO()
+        hba_repmgr = StringIO()
+        hba_extra_checkuser = StringIO()
+
+        for dsn in dsns:
+            print("host    replication   repmgr      %s/32     trust" % dsn.split(':')[0], file=hba_repl)
+            print("host    repmgr        repmgr      %s/32     trust" % dsn.split(':')[0], file=hba_repmgr)
+            print("host    template1             %s             %s/32        trust" % (props["<%= @bn.checkuser %>"], dsn.split(':')[0]), file=hba_extra_checkuser)
+        #hba_repl.seek(0)
+        #hba_repmgr.seek(0)
+        #hba_extra_checkuser.seek(0)
+        extras['repl'] = hba_repl.getvalue()
+        extras['repmgr'] = hba_repmgr.getvalue()
+        extras['checkuser'] = hba_extra_checkuser.getvalue()
+
     project = props["<%= @bn.project %>"]
     directory = ('%s/%s' % (BASEDIR, project))
 
@@ -139,9 +226,9 @@ def main():
         if e.errno != errno.EEXIST:
             raise
 
-    new_haproxy_conf(props)
-    add_hba_checkuser(props)
-    add_hba_repmgr(props)
+    new_haproxy_conf(props, slavelist)
+    add_hba_checkuser(props, extras)
+    add_hba_repmgr(props, extras)
 
     print("Done!", file=sys.stderr)
 

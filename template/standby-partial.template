@@ -1,0 +1,1 @@
+server {name} {dsn} check inter 5000 fastinter 2000 downinter 5000 rise 2 fall 3 port {checkport}
