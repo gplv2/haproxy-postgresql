@@ -179,7 +179,7 @@ def main():
         names = standbyname.split(";")
         multiple_slaves = True
         for name in names:
-            #print(name)
+            print(name, file=sys.stderr)
     else:
         print("No multiple standy servers found.", file=sys.stderr)
 
@@ -188,7 +188,7 @@ def main():
         dsns = standbydsn.split(";")
         multiple_slaves = True
         for ip in dsns:
-            #print(ip)
+            print(ip, file=sys.stderr)
     else:
         print("No multiple standy ips found.", file=sys.stderr)
 
