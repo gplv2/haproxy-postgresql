@@ -10,6 +10,10 @@ This is tested in conjunction with repmgrd, pgbouncer, keepalived/haproxy archit
 
 The latest version will block all connections when it detects more or less than a single master server.  You do not want to write your data in just any server.  In the case you have 2 disconnected masters servers (meaning 2 servers that aren't standby/slaves) they both will pass this check.  Hence a built-in ACL will prevent writing to any servers, which as a DBA is what you want.  It's better to block this than to accept , also this way you don't show bias towards a node when using the backup directive for example for your second node.  It's not a good idea when a former master comes back after a failure, it will be the primary candidate to write to, but in such cases, your standby server should already be promoted and the old primary should not be written to anymore without resyncing it with the freshly promoted standby. 
 
+## Test this with vagrant
+
+use this Vagrant setup to see it in action :  https://github.com/gplv2/vagrant-postgres
+
 ### Screenshot
 ![alt text][haproxy1]
 
